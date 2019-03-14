@@ -1,4 +1,4 @@
-Sample code related to the following article.
+Sample code related to the following article (by Antonino Calderone - published on Computer Programming - n. 153 - Gennaio 2006 
 
 # Enabling direct I/O ports access in user space
 
