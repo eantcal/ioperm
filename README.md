@@ -39,3 +39,5 @@ By modifying the permission bitmap is possible to enable the I/O port access for
 Each bit corresponds to an I/O address space byte. For example 1-byte size port at address 0x31 corresponds to bit 1 of byte 7 of the bitmap. A process is allowed to access a specific byte if the related bit on the bitmap is 0.
 
 Linux ioperm syscall can modify the first 0x3FF ports while the only way to get access to the remaining ports is using iopl syscall.
+
+![tss](https://7bcac53c-a-62cb3a1a-s-sites.googlegroups.com/site/eantcal/home/articles-and-publications/enabling-direct-i-o-ports-access-in-user-space/TSS.png)
