@@ -1,3 +1,5 @@
+Sample code related to the following article.
+
 # Enabling direct I/O ports access in user space
 
 This article describes the direct I/O access techniques in Linux and Windows user space applications. A Windows kernel driver which uses undocumented internal API is also described.
