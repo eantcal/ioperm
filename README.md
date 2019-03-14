@@ -41,3 +41,100 @@ Each bit corresponds to an I/O address space byte. For example 1-byte size port 
 Linux ioperm syscall can modify the first 0x3FF ports while the only way to get access to the remaining ports is using iopl syscall.
 
 ![tss](https://7bcac53c-a-62cb3a1a-s-sites.googlegroups.com/site/eantcal/home/articles-and-publications/enabling-direct-i-o-ports-access-in-user-space/TSS.png)
+
+# Ke386IoSetAccessProcess and Ke386SetIoAccessMap
+Windows does not support syscalls like ioperm or iopl but we can try to implement a KMD which will provide similar features as shown in the source code at List-1 that will discuss better in the next paragraph. 
+
+Although such driver is quite simple it is peculiar because of two undocumented Kernel API Ke386IoSetAccessProcess e Ke386SetIoAccessMap. Non official documentation about such APIs is the following:
+
+- void Ke386IoSetAccessProcess (PEPROCESS, int);
+This function ask the Kernel to enable access for the current process to the IOPM bitmap. Second argument enables (1) or disables (0) such access.
+
+- void Ke386SetIoAccessMap (int, IOPM *);
+Replaces the current process IOPM bitmap (first parameter must be 1). 
+
+- void Ke386QueryIoAccessMap (int, IOPM *);
+Returns the current process IOPM. First argument must be 1.
+
+Described functions can be combined to update the I/O permission bitmap of calling process, allowing it to access to the whole I/O address space, as showing in the following fragment of code:
+
+```
+char * pIOPM = NULL;
+//...
+pIOPM = MmAllocateNonCachedMemory(65536 / 8);
+RtlZeroMemory(pIOPM, 65536 / 8);
+Ke386IoSetAccessProcess(IoGetCurrentProcess(), 1);
+```
+
+The Kernel Mode Driver
+KMD role is to provide the O/S with the access to a specific device. 
+
+From a user space process point of view a KMD can be handled as special file and handled by syscalls like CreateFile, ReadFile or DeviceIoControl.
+
+From an implementation point of view it is a set of functions registered into and called by I/O Manager during the I/O operations on the controlled device.
+
+# A generic Windows KMD implementation includes:
+
+DriverEntry function called by I/O Manager as soon as the driver is loaded.
+Dispatch entry points: functions called on I/O requests which process the I/O Request Packet (IRPs).
+Interrupt Service Routines (ISRs): which handle the device Interrupt requests (IRQs)  
+Deferred Procedure Calls (DPCs): special routines typically called from ISR to complete a service routine task out of ISR execution context.
+Driver implementation shown in the List-1 does not use any ISR or DPC, while it just implements I/O control command used to get access the I/O permission bitmap.
+
+Our driver in fact exports just two specific features: enabling and disabling the direct I/O ports access, implemented via a IOCTL request. Same result can be obtained in Linux calling the iopl syscall (ioperm can be used just for the first 0x3ff ports for historical reasons). 
+
+Driver entry point is implemented the is the following function:
+
+```
+Ke386SetIoAccessMap(1, pIOPM);
+```
+
+Such function accepts a DRIVER_OBJECT structure pointer which is a unique object is built by Windows upon the driver activation. RegistryPath parameter is a unicode string which represent the registry path name used for configuring the driver.
+
+The returned value is processed by I/O Manager. In case it should be different than STATUS_SUCCESS, the driver will be terminated and removed from memory. 
+
+This function creates a device object and the related name and then registers the dispatch entry points: in our driver they are implemented in the function ioperm_create, ioperm_close and ioperm_devcntrl.
+
+Such functions process the IRPs built by I/O Manager as result of a I/O system request. 
+
+To build the driver binary we have used Microsoft Driver Development Kit (DDK).
+
+DDK provides a tools and libraries to create the driver binary which typically has .sys file extension which is installed in a specific system directory (system32\drivers)
+
+Installation process includes the Windows Register registration which can be done via using a specific .REG as shown in the following example:
+
+Windows Registry Editor Version 5.00
+
+
+```
+[HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\ioperm]
+"Type"=dword:00000001
+"ErrorControl"=dword:00000001
+"Start"=dword:00000002
+"DisplayName"="ioperm"
+"ImagePath"="System32\\DRIVERS\\ioperm.sys"
+```
+
+Once installed the driver configuration will be visible via the Device Manager (as shown in Fig.2). 
+
+We have implemented a simple user space program for Windows and Linux (List-2) which probes the parallel port. Such device is typically mapped at port addresses 0x278, 0x378, 0x3BC. Data register (offset 0) is a 8 bit data latch. 
+
+Knowing that a program can detect the device writing and reading back a byte using a specific pattern (skipping pull-down or pull-up values like 0 or 0xFF).
+
+The program can be compiled in Visual Studio or using GNU C++.
+
+![Windows Device Manager](https://sites.google.com/site/eantcal/home/articles-and-publications/enabling-direct-i-o-ports-access-in-user-space/figura2.jpg)
+
+# Conclusion
+Looking back the Linux versions we discovered that ioperm and iopl syscalls have been added since early versions.
+
+We are not surprised of such thing, and we are not surprised that Microsoft has decided not to do that.
+
+# References
+[1] Intel - "Intel Architecture Software Developer’s Manual - Volume 1:Basic Architecture", Intel, 1999
+[2] Intel - "Intel Architecture Software Developer’s Manual, Volume 3" Intel, 1999
+[3] P.G. Viscarola, W.A. Mason - "Windows NT - Device Driver Development", MTP, 1999
+[5] http://www.ddj.com/articles/1996/9605/
+[6] http://www.beyondlogic.org/porttalk/porttalk.htm
+[7] http://www.microsoft.com/whdc/devtools/ddk/default.mspx
+[8] http://lxr.linux.no/linux-bk+v2.6.11.5/arch/i386/kernel/ioport.c
