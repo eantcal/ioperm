@@ -19,9 +19,7 @@ Often a better way is combining UMD and KMD for providing a solution where the K
 
 And finally, although we cannot replace a KMD anytime we have to deal with interrupts and other bunch of low level stuff, knowing how to access I/O from user space can still be useful in many other cases.
 
-I/O permission level and I/O permission bit map
-I processori x86 usano un algoritmo per validare l'accesso a una porta di I/O basato su due distinti meccanismi di "permission check" (è possibile trovarne una trattazione dettagliata in [1]):
-
+# I/O permission level and I/O permission bit map
 x86 processors use an algorithm to validate a port I/O access based on two permission checks ([1]):
 
 Checking the I/O Privilege Level (IOPL) of EFLAGS register
