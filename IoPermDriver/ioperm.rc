@@ -1,0 +1,11 @@
+#include <windows.h>
+#include <ntverp.h>
+#define VER_FILETYPE			VFT_DRV
+#define VER_FILESUBTYPE			VFT2_DRV_SYSTEM
+#define VER_FILEDESCRIPTION_STR     	"IoPerm KMD by A. Calderone"
+#define VER_INTERNALNAME_STR        	"ioperm.sys"
+#define VER_ORIGINALFILENAME_STR    	"ioperm.sys"
+#define VER_LEGALCOPYRIGHT_STR      	"antonino.calderone@gmail.com"
+#define VER_COMPANYNAME_STR         	"www.infomedia.it"
+#define VER_PRODUCTNAME_STR         	"IoPerm Driver v0.1"
+#include "common.ver"
