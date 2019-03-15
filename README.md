@@ -43,7 +43,7 @@ Linux ioperm syscall can modify the first 0x3FF ports while the only way to get 
 ![tss](https://7bcac53c-a-62cb3a1a-s-sites.googlegroups.com/site/eantcal/home/articles-and-publications/enabling-direct-i-o-ports-access-in-user-space/TSS.png)
 
 # Ke386IoSetAccessProcess and Ke386SetIoAccessMap
-Windows does not support syscalls like ioperm or iopl but we can try to implement a KMD which will provide similar features as shown in the source code at List-1 that will discuss better in the next paragraph. 
+Windows does not support syscalls like ioperm or iopl but we can try to implement a KMD which will provide similar features as shown in ioperm.c that will discuss better in the next paragraph. 
 
 Although such driver is quite simple it is peculiar because of two undocumented Kernel API Ke386IoSetAccessProcess e Ke386SetIoAccessMap. Non official documentation about such APIs is the following:
 
@@ -79,7 +79,7 @@ DriverEntry function called by I/O Manager as soon as the driver is loaded.
 Dispatch entry points: functions called on I/O requests which process the I/O Request Packet (IRPs).
 Interrupt Service Routines (ISRs): which handle the device Interrupt requests (IRQs)  
 Deferred Procedure Calls (DPCs): special routines typically called from ISR to complete a service routine task out of ISR execution context.
-Driver implementation shown in the List-1 does not use any ISR or DPC, while it just implements I/O control command used to get access the I/O permission bitmap.
+Driver implementation shown in the ioPermDriver does not use any ISR or DPC, while it just implements I/O control command used to get access the I/O permission bitmap.
 
 Our driver in fact exports just two specific features: enabling and disabling the direct I/O ports access, implemented via a IOCTL request. Same result can be obtained in Linux calling the iopl syscall (ioperm can be used just for the first 0x3ff ports for historical reasons). 
 
@@ -117,7 +117,7 @@ Windows Registry Editor Version 5.00
 
 Once installed the driver configuration will be visible via the Device Manager (as shown in Fig.2). 
 
-We have implemented a simple user space program for Windows and Linux (List-2) which probes the parallel port. Such device is typically mapped at port addresses 0x278, 0x378, 0x3BC. Data register (offset 0) is a 8 bit data latch. 
+We have implemented a simple user space program for Windows and Linux (ioPermTest) which probes the parallel port. Such device is typically mapped at port addresses 0x278, 0x378, 0x3BC. Data register (offset 0) is a 8 bit data latch. 
 
 Knowing that a program can detect the device writing and reading back a byte using a specific pattern (skipping pull-down or pull-up values like 0 or 0xFF).
 
