@@ -40,7 +40,7 @@ Each bit corresponds to an I/O address space byte. For example 1-byte size port 
 
 Linux ioperm syscall can modify the first 0x3FF ports while the only way to get access to the remaining ports is using iopl syscall.
 
-![tss](https://7bcac53c-a-62cb3a1a-s-sites.googlegroups.com/site/eantcal/home/articles-and-publications/enabling-direct-i-o-ports-access-in-user-space/TSS.png)
+![tss](pics/TSS.png)
 
 # Ke386IoSetAccessProcess and Ke386SetIoAccessMap
 Windows does not support syscalls like ioperm or iopl but we can try to implement a KMD which will provide similar features as shown in ioperm.c that will discuss better in the next paragraph. 
@@ -123,7 +123,7 @@ Knowing that a program can detect the device writing and reading back a byte usi
 
 The program can be compiled in Visual Studio or using GNU C++.
 
-![Windows Device Manager](https://sites.google.com/site/eantcal/home/articles-and-publications/enabling-direct-i-o-ports-access-in-user-space/figura2.jpg)
+![Windows Device Manager](pics/iodevman.jpg)
 
 # Conclusion
 Looking back the Linux versions we discovered that ioperm and iopl syscalls have been added since early versions.
