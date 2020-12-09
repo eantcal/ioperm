@@ -73,31 +73,33 @@ From a user space process point of view a KMD can be handled as special file and
 
 From an implementation point of view it is a set of functions registered into and called by I/O Manager during the I/O operations on the controlled device.
 
-# A generic Windows KMD implementation includes:
+# A generic Windows KMD.
+A generic Windows KMD implementation includes:
 
-DriverEntry function called by I/O Manager as soon as the driver is loaded.
-Dispatch entry points: functions called on I/O requests which process the I/O Request Packet (IRPs).
-Interrupt Service Routines (ISRs): which handle the device Interrupt requests (IRQs)  
-Deferred Procedure Calls (DPCs): special routines typically called from ISR to complete a service routine task out of ISR execution context.
-Driver implementation shown in the ioPermDriver does not use any ISR or DPC, while it just implements I/O control command used to get access the I/O permission bitmap.
+- DriverEntry function called by I/O Manager as soon as the driver is loaded.
+- Dispatch entry points: functions called on I/O requests which process the I/O Request Packet (IRPs).
+- Interrupt Service Routines (ISRs): which handle the device Interrupt requests (IRQs)  
+- Deferred Procedure Calls (DPCs): special routines typically called from ISR to complete a service routine task out of ISR execution context.
 
-Our driver in fact exports just two specific features: enabling and disabling the direct I/O ports access, implemented via a IOCTL request. Same result can be obtained in Linux calling the iopl syscall (ioperm can be used just for the first 0x3ff ports for historical reasons). 
+The driver implementation shown in the ioPermDriver does not use any ISR or DPC, while it just implements I/O control command used to get access the I/O permission bitmap.
 
-Driver entry point is implemented the is the following function:
+Our driver in fact exports just two specific features: enabling and disabling the direct I/O ports access, implemented via a IOCTL request. Same result can be obtained in Linux calling the syscall iopl (ioperm can be used just for the first 0x3ff ports for historical reasons). 
+
+Driver entry point is implemented in the following function:
 
 ```
 Ke386SetIoAccessMap(1, pIOPM);
 ```
 
-Such function accepts a DRIVER_OBJECT structure pointer which is a unique object is built by Windows upon the driver activation. RegistryPath parameter is a unicode string which represent the registry path name used for configuring the driver.
+Such function accepts a pointer to DRIVER_OBJECT structure which is a unique object, built by Windows upon the driver activation. The parameter RegistryPath is a unicode string which represents the registry path name used for configuring the driver.
 
-The returned value is processed by I/O Manager. In case it should be different than STATUS_SUCCESS, the driver will be terminated and removed from memory. 
+The returned value is processed by I/O Manager. If such value is not STATUS_SUCCESS, the driver will be terminated and removed from memory. 
 
 This function creates a device object and the related name and then registers the dispatch entry points: in our driver they are implemented in the function ioperm_create, ioperm_close and ioperm_devcntrl.
 
 Such functions process the IRPs built by I/O Manager as result of a I/O system request. 
 
-To build the driver binary we have used Microsoft Driver Development Kit (DDK).
+To build the driver binary we want to used Microsoft Driver Development Kit (DDK).
 
 DDK provides a tools and libraries to create the driver binary which typically has .sys file extension which is installed in a specific system directory (system32\drivers)
 
