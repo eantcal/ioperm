@@ -4,7 +4,6 @@ Sample code related to the following article published on Computer Programming -
 
 This article describes the direct I/O access techniques in Linux and Windows user space applications. A Windows kernel driver which uses undocumented internal API is also described.
 
-
 Intel x86 processors in addition to memory mapped devices support also so called I/O ports mapped devices via a 'privileged' set of machine instructions. Such instructions are checked by system to guarantee processes and kernel space isolation where only (Linux and Windows) Kernel privileged code is allowed to address the I/O directly.
 
 Only two of four privilege levels (rings) of x86 processors are typically used by Linux and Windows: ring 0 for kernel space and ring 3 for user space. While in kernel space any privileged instruction can be executed, in user space this can only be allowed through a specific interface provided by operating system.
@@ -32,7 +31,7 @@ Because each process has a specific copy of EFLAGS, different process might have
 
 You can find more information about iopl syscall (sys_iopl) and ioperm syscall (which modifies the I/O permission bitmap which will be soon discussed) looking Linux kernel source code.
 
-I/O permission bitmap is part of TSS. Base address and location are both part of TSS.
+The I/O permission bitmap is part of TSS. Base address and location are both part of TSS.
 
 By modifying the permission bitmap is possible to enable the I/O port access for any process even less privileged or virtual-8086 processes where CPL>=IOPL. The bitmap can cover the entire I/O address space or a subset of it.
 
@@ -47,13 +46,13 @@ Windows does not support syscalls like ioperm or iopl but we can try to implemen
 
 Although such driver is quite simple it is peculiar because of two undocumented Kernel API Ke386IoSetAccessProcess e Ke386SetIoAccessMap. Non official documentation about such APIs is the following:
 
-- void Ke386IoSetAccessProcess (PEPROCESS, int);
+- ``void Ke386IoSetAccessProcess (PEPROCESS, int);``
 This function ask the Kernel to enable access for the current process to the IOPM bitmap. Second argument enables (1) or disables (0) such access.
 
-- void Ke386SetIoAccessMap (int, IOPM *);
+- ``void Ke386SetIoAccessMap (int, IOPM *);``
 Replaces the current process IOPM bitmap (first parameter must be 1). 
 
-- void Ke386QueryIoAccessMap (int, IOPM *);
+- ``void Ke386QueryIoAccessMap (int, IOPM *);``
 Returns the current process IOPM. First argument must be 1.
 
 Described functions can be combined to update the I/O permission bitmap of calling process, allowing it to access to the whole I/O address space, as showing in the following fragment of code:
@@ -69,7 +68,7 @@ Ke386IoSetAccessProcess(IoGetCurrentProcess(), 1);
 The Kernel Mode Driver
 KMD role is to provide the O/S with the access to a specific device. 
 
-From a user space process point of view a KMD can be handled as special file and handled by syscalls like CreateFile, ReadFile or DeviceIoControl.
+From a user space process point of view a KMD can be handled as special file and handled by syscalls like ``CreateFile``, ``ReadFile`` or ``DeviceIoControl``.
 
 From an implementation point of view it is a set of functions registered into and called by I/O Manager during the I/O operations on the controlled device.
 
@@ -91,24 +90,19 @@ Driver entry point is implemented in the following function:
 Ke386SetIoAccessMap(1, pIOPM);
 ```
 
-Such function accepts a pointer to DRIVER_OBJECT structure which is a unique object, built by Windows upon the driver activation. The parameter RegistryPath is a unicode string which represents the registry path name used for configuring the driver.
+Such function accepts a pointer to ``DRIVER_OBJECT`` structure which is an object built by Windows upon the driver activation. The parameter ``RegistryPath`` is a unicode string which represents the registry path name used for configuring the driver.
 
-The returned value is processed by I/O Manager. If such value is not STATUS_SUCCESS, the driver will be terminated and removed from memory. 
+The returned value is processed by the I/O Manager. If such value is not ``STATUS_SUCCESS``, the driver is terminated and removed from memory. 
 
-This function creates a device object and the related name and then registers the dispatch entry points: in our driver they are implemented in the function ioperm_create, ioperm_close and ioperm_devcntrl.
+This function creates a device object and the related name and then registers the dispatch entry points implemented in our code by the functions ``ioperm_create``, ``ioperm_close`` and ``ioperm_devcntrl``. Such functions process the IRPs built by I/O Manager as result of a I/O system request. 
 
-Such functions process the IRPs built by I/O Manager as result of a I/O system request. 
+To build the binary code of the driver we can rely on the Microsoft Driver Development Kit (DDK).
+DDK provides a tools and libraries to create the driver binary which typically has as file extension ``.sys``. The driver is eventually installed in a specific system directory (``system32\drivers``).
 
-To build the driver binary we want to used Microsoft Driver Development Kit (DDK).
-
-DDK provides a tools and libraries to create the driver binary which typically has .sys file extension which is installed in a specific system directory (system32\drivers)
-
-Installation process includes the Windows Register registration which can be done via using a specific .REG as shown in the following example:
-
+In order to complete the driver installation, it must be registered into the Windows Register. This operation can be by using a specific ``.REG`` like the following:
+```
 Windows Registry Editor Version 5.00
 
-
-```
 [HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Services\ioperm]
 "Type"=dword:00000001
 "ErrorControl"=dword:00000001
@@ -117,26 +111,27 @@ Windows Registry Editor Version 5.00
 "ImagePath"="System32\\DRIVERS\\ioperm.sys"
 ```
 
-Once installed the driver configuration will be visible via the Device Manager (as shown in Fig.2). 
+Once installed, the configration of the driver will be visible through the Device Manager (as shown in Fig.2). 
 
-We have implemented a simple user space program for Windows and Linux (ioPermTest) which probes the parallel port. Such device is typically mapped at port addresses 0x278, 0x378, 0x3BC. Data register (offset 0) is a 8 bit data latch. 
+We have implemented a simple user space application for Windows and Linux (``ioPermTest``) which probes the parallel port. 
+Such device is typically mapped at port addresses ``0x278``, ``0x378``, ``0x3BC``. 
+The parallel port data register is located at offset 0 and it is a 8 bit data latch. 
+A program can detect the presence of such device writing and then reading back a byte using a specific pattern 
+(skipping typical values used for pull-down or pull-up like ``0x00`` or ``0xFF``).
 
-Knowing that a program can detect the device writing and reading back a byte using a specific pattern (skipping pull-down or pull-up values like 0 or 0xFF).
-
-The program can be compiled in Visual Studio or using GNU C++.
+``ioPermTest`` can be compiled using either Visual Studio (Windows) or GNU C++ (Windows/Linux/etc).
 
 ![Windows Device Manager](pics/iodevman.jpg)
 
 # Conclusion
-Looking back the Linux versions we discovered that ioperm and iopl syscalls have been added since early versions.
-
-We are not surprised of such thing, and we are not surprised that Microsoft has decided not to do that.
+Looking back the Linux versions we discovered that the syscalls ``ioperm`` and ``iopl`` have been added since earlier versions.
+We are not surprised of such thing as well as we are not surprised that Microsoft has decided not to do that.
 
 # References
-[1] Intel - "Intel Architecture Software Developer’s Manual - Volume 1:Basic Architecture", Intel, 1999
-[2] Intel - "Intel Architecture Software Developer’s Manual, Volume 3" Intel, 1999
-[3] P.G. Viscarola, W.A. Mason - "Windows NT - Device Driver Development", MTP, 1999
-[5] http://www.ddj.com/articles/1996/9605/
-[6] http://www.beyondlogic.org/porttalk/porttalk.htm
-[7] http://www.microsoft.com/whdc/devtools/ddk/default.mspx
-[8] http://lxr.linux.no/linux-bk+v2.6.11.5/arch/i386/kernel/ioport.c
+- [1] Intel - "Intel Architecture Software Developer’s Manual - Volume 1:Basic Architecture", Intel, 1999
+- [2] Intel - "Intel Architecture Software Developer’s Manual, Volume 3" Intel, 1999
+- [3] P.G. Viscarola, W.A. Mason - "Windows NT - Device Driver Development", MTP, 1999
+- [5] http://www.ddj.com/articles/1996/9605/
+- [6] http://www.beyondlogic.org/porttalk/porttalk.htm
+- [7] http://www.microsoft.com/whdc/devtools/ddk/default.mspx
+- [8] http://lxr.linux.no/linux-bk+v2.6.11.5/arch/i386/kernel/ioport.c
